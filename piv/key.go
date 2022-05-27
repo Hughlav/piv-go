@@ -642,6 +642,65 @@ func ykStoreCertificate(tx *scTx, slot Slot, cert *x509.Certificate) error {
 	return nil
 }
 
+func (yk *YubiKey) UpdateChuid(randBytes []byte) error {
+	// Non-Federal Issuer FASC-N
+	data := marshalASN1(0x30, []byte{
+		0xd4,
+		0xe7,
+		0x39,
+		0xda,
+		0x73,
+		0x9c,
+		0xed,
+		0x39,
+		0xce,
+		0x73,
+		0x9d,
+		0x83,
+		0x68,
+		0x58,
+		0x21,
+		0x08,
+		0x42,
+		0x10,
+		0x84,
+		0x21,
+		0xc8,
+		0x42,
+		0x10,
+		0xc3,
+		0xeb,
+	})
+	data = append(data, marshalASN1(0x34, randBytes)...)
+	// Expires on: 2030-01-01
+	expiry := []byte{
+		0x32,
+		0x30,
+		0x33,
+		0x30,
+		0x30,
+		0x31,
+		0x30,
+		0x31,
+	}
+	data = append(data, marshalASN1(0x35, expiry)...)
+	data = append(data, marshalASN1(0x3e, nil)...)
+	data = append(data, marshalASN1(0xfe, nil)...)
+	// https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-73-4.pdf#page=94
+	// https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-73-4.pdf#page=30
+	data = append(marshalASN1(0x5c, []byte{0x5f, 0xc1, 0x02}), marshalASN1(0x53, data)...)
+	cmd := apdu{
+		instruction: insPutData,
+		param1:      0x3f,
+		param2:      0xff,
+		data:        data,
+	}
+	if _, err := yk.tx.Transmit(cmd); err != nil {
+		return fmt.Errorf("command failed: %w", err)
+	}
+	return nil
+}
+
 // Key is used for key generation and holds different options for the key.
 //
 // While keys can have default PIN and touch policies, this package currently
