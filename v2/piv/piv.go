@@ -940,13 +940,6 @@ func supportsVersion(v *version, major, minor, patch byte) bool {
 	return v.patch >= patch
 }
 
-func marshalASN1(tag byte, data []byte) []byte {
-	if len(data) == 0 {
-		return []byte{tag, 0}
-	}
-	return append([]byte{tag, byte(len(data))}, data...)
-}
-
 func (yk *YubiKey) UpdateChuid(randBytes []byte) error {
 	// Non-Federal Issuer FASC-N
 	data := marshalASN1(0x30, []byte{
